@@ -8,11 +8,19 @@ use fltk::{
 };
 use tokio::{io::AsyncWriteExt, net::TcpStream, sync::Mutex};
 
+fn send_message(msg: String, stream_clone: Arc<Mutex<TcpStream>>) {
+    println!("POS:! {}", msg);
+    let stream_arc = Arc::clone(&stream_clone);
+    tokio::spawn(async move {
+        let mut lock = stream_arc.lock().await;
+        lock.write_all(msg.as_bytes()).await.unwrap();
+    });
+}
+
 #[tokio::main]
 async fn main() {
     // Connect to a peer
-    let stream = TcpStream::connect("127.0.0.1:5000").await.unwrap();
-
+    let stream = TcpStream::connect("127.0.0.1:5000").await.unwrap();    
     let app = App::default();
     let mut window = Window::new(20, 20, 800, 600, "Moonlight");
 
@@ -24,14 +32,13 @@ async fn main() {
     window.handle(move |_widget, ev: Event| {
         match ev {
             Event::Move => {
-                let msg = format!("({}.{})\n", app::event_coords().0, app::event_coords().1);
-                println!("POS:! {}", msg);
-
-                let stream_arc = Arc::clone(&stream_clone);
-                tokio::spawn(async move {
-                    let mut lock = stream_arc.lock().await;
-                    lock.write_all(msg.as_bytes()).await.unwrap();
-                });
+                let msg = format!("({}.{})\n", app::event_coords().0, app::event_coords().1);                
+                send_message(msg, Arc::clone(&stream_clone));
+                true
+            },
+            Event::Push => {
+                let msg = format!("[{}.{}]\n", app::event_coords().0, app::event_coords().1);                
+                send_message(msg, Arc::clone(&stream_clone));
                 true
             }
             /* other events to be handled */
@@ -39,4 +46,5 @@ async fn main() {
         }
     });
     app.run().unwrap();
+    
 }
