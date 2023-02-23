@@ -1,4 +1,4 @@
-// use utils;
+use moonlight_structs::{self, moonlight_structs::{Message, Messaging}};
 use tokio::{
     io::{AsyncWriteExt, BufReader, AsyncBufReadExt},
     net::TcpListener, sync::broadcast,
@@ -35,6 +35,7 @@ async fn main() {
 
                         if addr != other_addr {
                             writer.write_all(msg.as_bytes()).await.unwrap();
+                            writer.shutdown().await.unwrap();
                         }
                     }
                 }
