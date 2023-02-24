@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "udp-client",
+    "udp-server",
     "server",
     "client"
 ]
