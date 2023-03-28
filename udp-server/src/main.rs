@@ -20,6 +20,9 @@ async fn main() -> io::Result<()> {
     loop {
         let (len, addr) = r.recv_from(&mut buf).await?;
         println!("server {:?} bytes received from {:?}", len, addr);
+        let msg = String::from_utf8_lossy(&buf[..len]);
+        println!("server received: {}", msg);
+
         tx.send((buf[..len].to_vec(), addr)).await.unwrap();
     }
 }

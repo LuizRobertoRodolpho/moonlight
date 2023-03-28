@@ -1,10 +1,11 @@
+use chrono::{Local};
 use fltk::{
     app::{self, App},
     enums::Event,
-    prelude::*,
-    window::Window,
+    window::Window, prelude::{WidgetBase, WidgetExt, GroupExt},
 };
-use tokio::{net::UdpSocket, io};
+use rand::prelude::*;
+use tokio::{io, net::UdpSocket};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -12,15 +13,9 @@ async fn main() -> io::Result<()> {
 
     let remote_addr = "127.0.0.1:5000";
     sock.connect(remote_addr).await?;
-    // let mut buf = [0; 1024];
-    // loop {
-    //     sock.try_send(b"hello world");
-    //     // let len = sock.recv(&mut buf).await?;
-    //     // println!("{:?} bytes received from {:?}", len, remote_addr);
 
-    //     // let len = sock.send(&buf[..len]).await?;
-    //     // println!("{:?} bytes sent", len);
-    // }
+    let mut rng = rand::thread_rng();
+    let client_id: u16 = rng.gen();
 
     let app = App::default();
     let mut window = Window::new(20, 20, 800, 600, "Moonlight");
@@ -30,10 +25,16 @@ async fn main() -> io::Result<()> {
     window.handle(move |_widget, ev: Event| {
         match ev {
             Event::Move => {
-                let msg = format!("({}.{})\n", app::event_coords().0, app::event_coords().1);
-                match sock.try_send(b"hello world") {
+                let timestamp = Local::now().format("%H:%M:%S%.3f").to_string();
+                let msg = format!(
+                    "[{}] coords ({}.{})\n",
+                    timestamp,
+                    app::event_coords().0,
+                    app::event_coords().1
+                );
+                match sock.try_send(msg.as_bytes()) {
                     Ok(n) => {
-                        println!("client sent {} bytes", n);
+                        println!("client {} sent {} bytes", client_id, n);
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         println!("ddd")
@@ -46,9 +47,9 @@ async fn main() -> io::Result<()> {
             }
             Event::Push => {
                 let msg = format!("[{}.{}]\n", app::event_coords().0, app::event_coords().1);
-                match sock.try_send(b"hello world") {
+                match sock.try_send(msg.as_bytes()) {
                     Ok(n) => {
-                        println!("client sent {} bytes", n);
+                        println!("client {} sent {} bytes", client_id, n);
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         println!("ddd")
