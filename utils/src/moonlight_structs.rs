@@ -10,9 +10,10 @@ pub mod moonlight_structs {
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     pub struct Message {
         pub message_id: u32,
+        pub message_type: u8,
         pub player: Player,
-        pub pos_x: u16,
-        pub pos_y: u16
+        pub pos_x: i32,
+        pub pos_y: i32
     }
 
     pub trait Messaging {
@@ -27,6 +28,11 @@ pub mod moonlight_structs {
         }
         fn deserialize_moon(bytes: Vec<u8>) -> Message {
             let decoded_msg: Message = deserialize(&bytes).unwrap();
+            print!("Deserialized message {} from player {}. Coords: {} {}.", 
+                decoded_msg.message_id,
+                decoded_msg.player.player_id,
+                decoded_msg.pos_x,
+                decoded_msg.pos_y);
             return decoded_msg;
         }
     }
@@ -70,6 +76,7 @@ pub mod moonlight_structs {
             let player = create_player();
             let msg = Message {
                 message_id: 501,
+                message_type: 1,
                 player,
                 pos_x: 25,
                 pos_y: 50,
