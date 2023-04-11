@@ -1,6 +1,4 @@
 use std::{sync::Arc, net::SocketAddr};
-
-use chrono::{Local};
 use fltk::{
     app::{self, App},
     enums::Event,
@@ -14,10 +12,8 @@ use moonlight_structs::{self, moonlight_structs::{Player, Message, Messaging}};
 async fn main() -> io::Result<()> {
     let sock = UdpSocket::bind("127.0.0.1:5001".parse::<SocketAddr>().unwrap()).await?;
     let remote_addr = "127.0.0.1:5000";
-    //let address: SocketAddr = remote_addr.parse().unwrap();
     let r = Arc::new(sock);
     let s = r.clone();
-    //let (tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
     s.connect(remote_addr).await?;
     let mut buf = [0; 1024];
 
@@ -67,8 +63,6 @@ async fn main() -> io::Result<()> {
                 true
             }
             Event::Push => {
-                // let msg = format!("[{}.{}]\n", app::event_coords().0, app::event_coords().1);
-                
                 let player_message = Message {
                     message_id: 1,
                     message_type: 1,
@@ -91,8 +85,6 @@ async fn main() -> io::Result<()> {
                         println!("ddd")
                     }
                 }
-                //let len = s.send_to(&player_message.serialize_moon(), &addr).await.unwrap();
-                // println!("server {:?} bytes sent", len);
                 true
             }
             /* other events to be handled */
@@ -103,22 +95,4 @@ async fn main() -> io::Result<()> {
     app.run().unwrap();
 
     Ok(())
-}
-
-async fn receive(socket: &Arc<UdpSocket>) {
-    let mut buf = [0u8; 1024];
-
-    loop {
-        match socket.recv_from(&mut buf).await {
-            Ok((size, addr)) => {
-                println!("Received {} bytes from {}", size, addr);
-                let message = std::str::from_utf8(&buf[..size]).unwrap();
-                println!("Message: {}", message);
-            },
-            Err(e) => {
-                eprintln!("Failed to receive data: {}", e);
-                break;
-            }
-        }
-    }
 }
