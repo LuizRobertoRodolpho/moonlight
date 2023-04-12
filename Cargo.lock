@@ -667,6 +667,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0609f771ad9c6155384897e1df4d948e692667cc0588548b68eb44d052b27633"
 
 [[package]]
+name = "udp-client"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "fltk",
+ "rand",
+ "tokio",
+ "utils",
+]
+
+[[package]]
 name = "udp-server"
 version = "0.1.0"
 dependencies = [
@@ -685,17 +696,6 @@ name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
-
-[[package]]
-name = "upd-client"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "fltk",
- "rand",
- "tokio",
- "utils",
-]
 
 [[package]]
 name = "utils"
