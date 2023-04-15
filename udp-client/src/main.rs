@@ -1,5 +1,5 @@
 use fltk::{
-    app::{self},
+    app::{self, redraw},
     button::Button,
     draw,
     enums::{Color, Event},
@@ -10,55 +10,67 @@ use fltk::{
 };
 use moonlight_structs::{
     self,
-    moonlight_structs::{Message, Messaging, Player},
+    moonlight_structs::{Message, Messaging, Player, PlayerTrait},
 };
 use rand::{prelude::*, Error};
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::{Arc, RwLock, RwLockReadGuard}};
 use tokio::{io, net::UdpSocket, sync::Mutex};
 
 static CAPTURE_MOUSE_MOVE: bool = false;
-static CAPTURE_MOUSE_CLICK: bool = true;
+static CAPTURE_MOUSE_CLICK: bool = false;
 static CAPTURE_KEYUP: bool = true;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    // me as player =)
+    let player: Player = Player::new("BetolinoRox".to_string());
+    let shared_player = Arc::new(RwLock::new(player));
+    let write_player = shared_player.clone();
+
+    // initialize fltk
     let app = app::App::default().with_scheme(app::Scheme::Gleam);
     let window = Window::new(20, 20, 800, 600, "Moonlight");
     let arc_window = Arc::new(Mutex::new(window.clone()));
 
+    // TODO: Use random port when creating trait new to Network object
     let mut rng = thread_rng();
     let num = rng.gen_range(5000..6000);
-    let s = connect(num, arc_window).await.unwrap();
 
-    main_render(s, app, window);
+    // connect to server
+    let s = connect(num, arc_window, write_player).await.unwrap();
+
+    // fltk render beta window
+    main_render(s, app, window, shared_player);
 
     Ok(())
 }
 
-fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
-    let mut rng = rand::thread_rng();
-    let client_id: u32 = rng.gen();
-
+fn main_render(socket: Arc<UdpSocket>, 
+                app: app::App, 
+                mut window: Window, 
+                read_player: Arc<RwLock<Player>>) {
+    
     // TODO: Create new window/widget for Start Screen
     let mut frame = Frame::new(0, 0, 400, 200, "");
-    let player_name_input = Input::new(100, 20, 80, 40, "Player Name");
-    let port_settings_input = Input::new(230, 20, 80, 40, "Port");
-    let mut connect_button = Button::new(330, 20, 80, 40, "Connect");
+    // let player_name_input = Input::new(100, 20, 80, 40, "Player Name");
+    // let port_settings_input = Input::new(230, 20, 80, 40, "Port");
+    // let mut connect_button = Button::new(330, 20, 80, 40, "Connect");
 
     window.handle(move |_widget, ev: Event| {
+
+        let mut temp_player = read_player.read().unwrap().clone();
+
         match ev {
             Event::Move => {
                 if CAPTURE_MOUSE_MOVE {
                     // TODO: create function/trait to create new message
+                    temp_player.pos_x = app::event_coords().0;
+                    temp_player.pos_y = app::event_coords().1;
+
                     let player_message = Message {
                         message_id: 1,
                         message_type: 0,
-                        player: Player {
-                            player_id: client_id,
-                            player_name: "betolino".to_string(),
-                        },
-                        pos_x: app::event_coords().0,
-                        pos_y: app::event_coords().1,
+                        player: temp_player
                     };
 
                     // if client.is_connected
@@ -80,15 +92,13 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
             Event::Push => {
                 if CAPTURE_MOUSE_CLICK {
                     // TODO: create function/trait to create new message
+                    temp_player.pos_x = app::event_coords().0;
+                    temp_player.pos_y = app::event_coords().1;
+                    
                     let player_message = Message {
                         message_id: 1,
-                        message_type: 1,
-                        player: Player {
-                            player_id: client_id,
-                            player_name: "betolino".to_string(),
-                        },
-                        pos_x: app::event_coords().0,
-                        pos_y: app::event_coords().1,
+                        message_type: 0,
+                        player: temp_player
                     };
 
                     // if client.is_connected
@@ -112,27 +122,23 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
                     match app::event_key().to_char() {
                         Some(key) => {
                             let key_val = key as u8 as char;
-                            let mut delta_x = 0;
-                            let mut delta_y = 0;
+                            // let mut delta_x = 0;
+                            // let mut delta_y = 0;
                             if key_val == 'w' || key_val == 'W' {
-                                delta_x -= 1;
+                                temp_player.pos_y -= 10;
                             } else if key_val == 's' || key_val == 'S' {
-                                delta_x += 1;
+                                temp_player.pos_y += 10
                             } else if key_val == 'a' || key_val == 'A' {
-                                delta_y -= 1;
+                                temp_player.pos_x -= 10;
                             } else if key_val == 'd' || key_val == 'D' {
-                                delta_y += 1;
+                                temp_player.pos_x += 10;
                             }
+
                             // TODO: create function/trait to create new message
                             let player_message = Message {
                                 message_id: 1,
                                 message_type: 2,
-                                player: Player {
-                                    player_id: client_id,
-                                    player_name: "betolino".to_string(),
-                                },
-                                pos_x: delta_x,
-                                pos_y: delta_y,
+                                player: temp_player
                             };
 
                             // if client.is_connected
@@ -169,7 +175,7 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
     // button clicks and message pattern
     let (sender, receiver) = app::channel::<UIMessage>();
 
-    connect_button.emit(sender, UIMessage::Connect);
+    //connect_button.emit(sender, UIMessage::Connect);
 
     while app.wait() {
         if let Some(msg) = receiver.recv() {
@@ -205,7 +211,10 @@ pub trait ClientTrait {
 }
 
 async fn connect(
-    client_port: u16, window: Arc<Mutex<Window>>) -> Result<Arc<UdpSocket>, Error> {
+    client_port: u16, 
+    window: Arc<Mutex<Window>>, 
+    player: Arc<RwLock<Player>>) -> Result<Arc<UdpSocket>, Error> {
+    
     let local_address = format!("127.0.0.1:{}", client_port);
     let remote_address = "127.0.0.1:5000";
     let socket = UdpSocket::bind(local_address.parse::<SocketAddr>().unwrap())
@@ -216,7 +225,7 @@ async fn connect(
     udp_socket.connect(remote_address).await.unwrap();
     let mut buf = [0; 1024];
 
-    // receive server messages
+    // receive server messages - render
     tokio::spawn(async move {
         let mut rect_x = 50;
         let mut rect_y = 50;
@@ -227,14 +236,22 @@ async fn connect(
             let (len, addr) = socket_arc.recv_from(&mut buf).await.unwrap();
             let rec_msg = Message::deserialize_moon(buf[..len].to_vec());
 
+            // update player real position
+            write_position(
+                player.clone(), 
+                rec_msg.player.pos_x,
+                rec_msg.player.pos_y).await;
+
             // create fltk draw function
             let mut locked_window = window.lock().await;
             
             locked_window.draw(move |_| {
                 draw::set_draw_color(Color::Blue);
-                draw::draw_rect(rec_msg.pos_x, rec_msg.pos_y, rect_width, rect_height);
+                draw::draw_rect(rec_msg.player.pos_x, rec_msg.player.pos_y, rect_width, rect_height);
+                redraw();
             });
             locked_window.redraw();
+            drop(locked_window);
 
             println!("server confirmed message");
         }
@@ -260,4 +277,14 @@ async fn connect(
     // });
 
     return Ok(udp_socket);
+}
+
+async fn write_position(obj: Arc<RwLock<Player>>, pos_x: i32, pos_y: i32) {
+    // acquire a write lock on the object
+    let mut write_guard = obj.write().unwrap();
+
+    // modify the object
+    write_guard.pos_x = pos_x;
+    write_guard.pos_y = pos_y;
+    println!("Async function modified object: {:?}", write_guard);
 }

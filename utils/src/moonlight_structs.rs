@@ -1,19 +1,40 @@
 pub mod moonlight_structs {
     use bincode::{serialize, deserialize};
+    use rand::*;
     use serde::{Serialize, Deserialize};
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
     pub struct Player {
         pub player_id: u32,
-        pub player_name: String
+        pub player_name: String,
+        pub pos_x: i32,
+        pub pos_y: i32
     }
+
+    pub trait PlayerTrait {
+        fn new(player_name: String) -> Player;
+    }
+
+    impl PlayerTrait for Player {
+        fn new(player_name: String) -> Player {
+            let mut rng = rand::thread_rng();
+            let player_id = rng.gen_range(1..9999);
+            let pos_x = 200;
+            let pos_y = 150;
+            Player {
+                player_id,
+                player_name,
+                pos_x,
+                pos_y
+            }
+        }
+    }
+
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     pub struct Message {
         pub message_id: u32,
         pub message_type: u8,
-        pub player: Player,
-        pub pos_x: i32,
-        pub pos_y: i32
+        pub player: Player
     }
 
     pub trait Messaging {
@@ -31,8 +52,8 @@ pub mod moonlight_structs {
             print!("Deserialized message {} from player {}. Coords: {} {}.", 
                 decoded_msg.message_id,
                 decoded_msg.player.player_id,
-                decoded_msg.pos_x,
-                decoded_msg.pos_y);
+                decoded_msg.player.pos_x,
+                decoded_msg.player.pos_y);
             return decoded_msg;
         }
     }
@@ -67,7 +88,9 @@ pub mod moonlight_structs {
         fn create_player() -> Player {
             let player = Player {
                 player_id: 1,
-                player_name: String::from("Beto")
+                player_name: String::from("Beto"),
+                pos_x: 25,
+                pos_y: 50,
             };
             return player;
         }
@@ -77,9 +100,7 @@ pub mod moonlight_structs {
             let msg = Message {
                 message_id: 501,
                 message_type: 1,
-                player,
-                pos_x: 25,
-                pos_y: 50,
+                player
             };
             return msg;
         }

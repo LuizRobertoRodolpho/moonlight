@@ -28,17 +28,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // let mut buf = [0; 1024];
-    // loop {
-    //     let (len, addr) = r.recv_from(&mut buf).await?;
-    //     println!("server {:?} bytes received from {:?}", len, addr);
-    //     // let msg = String::from_utf8_lossy(&buf[..len]);
-    //     // println!("server received: {}", msg);
-    //     let rec_msg = Message::deserialize_moon(buf[..len].to_vec());
-
-    //     tx.send((buf[..len].to_vec(), addr)).await.unwrap();
-    // }
-
     loop {
         let mut buf = [0; 1024];
         let (len, src) = r.recv_from(&mut buf).await?;
@@ -84,9 +73,9 @@ fn ping_message() -> Message {
         player: Player {
             player_id: 0,
             player_name: "admin".to_string(),
-        },
-        pos_x: 0,
-        pos_y: 0
+            pos_x: 0,
+            pos_y: 0
+        }
     };
 
     return message;

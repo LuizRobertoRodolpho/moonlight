@@ -702,6 +702,7 @@ name = "utils"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "rand",
  "serde",
 ]
 
