@@ -19,8 +19,8 @@ pub mod moonlight_structs {
         fn new(player_name: String) -> Player {
             let mut rng = rand::thread_rng();
             let player_id = rng.gen_range(1..9999);
-            let pos_x = 200;
-            let pos_y = 150;
+            let pos_x = rng.gen_range(250..1000);
+            let pos_y = rng.gen_range(20..500);
             Player {
                 player_id,
                 player_name,
@@ -30,7 +30,7 @@ pub mod moonlight_structs {
         }
     }
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
     pub struct Message {
         pub message_id: u32,
         pub message_type: u8,
@@ -49,7 +49,7 @@ pub mod moonlight_structs {
         }
         fn deserialize_moon(bytes: Vec<u8>) -> Message {
             let decoded_msg: Message = deserialize(&bytes).unwrap();
-            print!("Deserialized message {} from player {}. Coords: {} {}.", 
+            println!("Deserialized message {} from player {}. Coords: {} {}.", 
                 decoded_msg.message_id,
                 decoded_msg.player.player_id,
                 decoded_msg.player.pos_x,

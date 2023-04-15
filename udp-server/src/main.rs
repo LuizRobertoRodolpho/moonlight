@@ -14,19 +14,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let s = r.clone();
     let s2 = r.clone();
 
-    let (tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
+    // let (tx, mut rx) = mpsc::channel::<(Vec<u8>, SocketAddr)>(1_000);
 
-    tokio::spawn(async move {
-        while let Some((bytes, addr)) = rx.recv().await {
-            let rec_msg = Message::deserialize_moon(bytes);
+    // tokio::spawn(async move {
+    //     while let Some((bytes, addr)) = rx.recv().await {
+    //         let rec_msg = Message::deserialize_moon(bytes);
 
-            // create function to handle message
+    //         // create function to handle message
 
-            let len = s2.send_to(&rec_msg.serialize_moon(), &addr).await.unwrap();
-            println!("server {:?} bytes sent", len);
+    //         let len = s2.send_to(&rec_msg.serialize_moon(), &addr).await.unwrap();
+    //         println!("server {:?} bytes sent", len);
             
-        }
-    });
+    //     }
+    // });
 
     loop {
         let mut buf = [0; 1024];
