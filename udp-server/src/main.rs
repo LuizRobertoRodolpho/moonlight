@@ -1,7 +1,7 @@
-use std::{sync::Arc, net::SocketAddr, collections::HashMap, rc::Rc};
+use std::{sync::Arc, net::SocketAddr, collections::HashMap};
 
 use moonlight_structs::moonlight_structs::{Message, Messaging, Player};
-use tokio::{net::UdpSocket, io, sync::mpsc};
+use tokio::{net::UdpSocket, sync::mpsc};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,21 +1,24 @@
 use fltk::{
-    app::{self, redraw},
+    app::{self},
     button::Button,
     draw,
-    enums::{self, Event, Key, Color},
+    enums::{Color, Event},
     frame::Frame,
     input::Input,
-    prelude::{GroupExt, InputExt, WidgetBase, WidgetExt},
+    prelude::{GroupExt, WidgetBase, WidgetExt},
     window::Window,
-    valuator,
 };
 use moonlight_structs::{
     self,
     moonlight_structs::{Message, Messaging, Player},
 };
 use rand::{prelude::*, Error};
-use std::{cell::RefCell, net::SocketAddr, rc::Rc, sync::Arc, time::Duration, borrow::Borrow};
-use tokio::{io, net::UdpSocket, runtime::Runtime, sync::Mutex, time};
+use std::{net::SocketAddr, sync::Arc};
+use tokio::{io, net::UdpSocket, sync::Mutex};
+
+static CAPTURE_MOUSE_MOVE: bool = false;
+static CAPTURE_MOUSE_CLICK: bool = true;
+static CAPTURE_KEYUP: bool = true;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -33,11 +36,10 @@ async fn main() -> io::Result<()> {
 }
 
 fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
-    let socket2 = socket.clone();
     let mut rng = rand::thread_rng();
     let client_id: u32 = rng.gen();
 
-
+    // TODO: Create new window/widget for Start Screen
     let mut frame = Frame::new(0, 0, 400, 200, "");
     let player_name_input = Input::new(100, 20, 80, 40, "Player Name");
     let port_settings_input = Input::new(230, 20, 80, 40, "Port");
@@ -46,109 +48,112 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
     window.handle(move |_widget, ev: Event| {
         match ev {
             Event::Move => {
-                let player_message = Message {
-                    message_id: 1,
-                    message_type: 0,
-                    player: Player {
-                        player_id: client_id,
-                        player_name: "betolino".to_string(),
-                    },
-                    pos_x: app::event_coords().0,
-                    pos_y: app::event_coords().1,
-                };
+                if CAPTURE_MOUSE_MOVE {
+                    // TODO: create function/trait to create new message
+                    let player_message = Message {
+                        message_id: 1,
+                        message_type: 0,
+                        player: Player {
+                            player_id: client_id,
+                            player_name: "betolino".to_string(),
+                        },
+                        pos_x: app::event_coords().0,
+                        pos_y: app::event_coords().1,
+                    };
 
-                // if client.is_connected
-                match socket.try_send(&player_message.serialize_moon()) {
-                    Ok(n) => {
-                        //println!("client {} sent {} bytes", client_id, n);
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        println!("ddd")
-                    }
-                    Err(e) => {
-                        println!("ddd")
+                    // if client.is_connected
+                    match socket.try_send(&player_message.serialize_moon()) {
+                        Ok(n) => {
+                            //println!("client {} sent {} bytes", client_id, n);
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                            println!("ddd")
+                        }
+                        Err(e) => {
+                            println!("ddd")
+                        }
                     }
                 }
-                // else
-                // {
-                //     println!("client not connected");
-                // }
+
                 true
             }
             Event::Push => {
-                let player_message = Message {
-                    message_id: 1,
-                    message_type: 1,
-                    player: Player {
-                        player_id: client_id,
-                        player_name: "betolino".to_string(),
-                    },
-                    pos_x: app::event_coords().0,
-                    pos_y: app::event_coords().1,
-                };
+                if CAPTURE_MOUSE_CLICK {
+                    // TODO: create function/trait to create new message
+                    let player_message = Message {
+                        message_id: 1,
+                        message_type: 1,
+                        player: Player {
+                            player_id: client_id,
+                            player_name: "betolino".to_string(),
+                        },
+                        pos_x: app::event_coords().0,
+                        pos_y: app::event_coords().1,
+                    };
 
-                // if client.is_connected
-                match socket.try_send(&player_message.serialize_moon()) {
-                    Ok(n) => {
-                        //println!("client {} sent {} bytes", client_id, n);
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        println!("ddd")
-                    }
-                    Err(e) => {
-                        println!("ddd")
+                    // if client.is_connected
+                    match socket.try_send(&player_message.serialize_moon()) {
+                        Ok(n) => {
+                            //println!("client {} sent {} bytes", client_id, n);
+                        }
+                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                            println!("ddd")
+                        }
+                        Err(e) => {
+                            println!("ddd")
+                        }
                     }
                 }
-                // else
-                // {
-                //     println!("client not connected");
-                // }
+
                 true
             }
             Event::KeyUp => {
-                match app::event_key().to_char() {
-                    Some(key) => {
-                        let key_val = key as u8 as char;
-                        let mut delta_x = 0;
-                        let mut delta_y = 0;
-                        if key_val == 'w' || key_val == 'W' {
-                            delta_x -= 1;
-                        } else if key_val == 's' || key_val == 'S' {
-                            delta_x += 1;
-                        } else if key_val == 'a' || key_val == 'A' {
-                            delta_y -= 1;
-                        } else if key_val == 'd' || key_val == 'D' {
-                            delta_y += 1;
-                        }
-                        let player_message = Message {
-                            message_id: 1,
-                            message_type: 2,
-                            player: Player {
-                                player_id: client_id,
-                                player_name: "betolino".to_string(),
-                            },
-                            pos_x: delta_x,
-                            pos_y: delta_y,
-                        };
+                if CAPTURE_KEYUP {
+                    match app::event_key().to_char() {
+                        Some(key) => {
+                            let key_val = key as u8 as char;
+                            let mut delta_x = 0;
+                            let mut delta_y = 0;
+                            if key_val == 'w' || key_val == 'W' {
+                                delta_x -= 1;
+                            } else if key_val == 's' || key_val == 'S' {
+                                delta_x += 1;
+                            } else if key_val == 'a' || key_val == 'A' {
+                                delta_y -= 1;
+                            } else if key_val == 'd' || key_val == 'D' {
+                                delta_y += 1;
+                            }
+                            // TODO: create function/trait to create new message
+                            let player_message = Message {
+                                message_id: 1,
+                                message_type: 2,
+                                player: Player {
+                                    player_id: client_id,
+                                    player_name: "betolino".to_string(),
+                                },
+                                pos_x: delta_x,
+                                pos_y: delta_y,
+                            };
 
-                        // if client.is_connected
-                        match socket.try_send(&player_message.serialize_moon()) {
-                            Ok(n) => {
-                                //println!("client {} sent {} bytes", client_id, n);
+                            // if client.is_connected
+                            match socket.try_send(&player_message.serialize_moon()) {
+                                Ok(n) => {
+                                    //println!("client {} sent {} bytes", client_id, n);
+                                }
+                                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                    println!("ddd")
+                                }
+                                Err(e) => {
+                                    println!("ddd")
+                                }
                             }
-                            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                println!("ddd")
-                            }
-                            Err(e) => {
-                                println!("ddd")
-                            }
-                        }
-                        println!(
-                            "Key down event detected! Keycode: {}, Key value: {}",
-                            key, key_val
-                        );
+                            println!(
+                                "Key down event detected! Keycode: {}, Key value: {}",
+                                key, key_val
+                            );
+                        },
+                        _ => println!("Key not found."),
                     }
-                    _ => (),
                 }
                 true
             }
@@ -159,7 +164,9 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
 
     window.end();
     window.show();
-
+    
+    // TODO: create a trait to handle this
+    // button clicks and message pattern
     let (sender, receiver) = app::channel::<UIMessage>();
 
     connect_button.emit(sender, UIMessage::Connect);
@@ -168,10 +175,10 @@ fn main_render(socket: Arc<UdpSocket>, app: app::App, mut window: Window) {
         if let Some(msg) = receiver.recv() {
             match msg {
                 UIMessage::Connect => {
-                    // frame.set_label(player_name_input.value().as_str());
-                    // client.connect(5001);
-                    //let rt = Runtime::new().unwrap();
-                    //rt.block_on(socket2.connect(player_name_input.value().as_str())).unwrap();
+                    // TODO: create pointer to socket (future Network trait)
+                    //      client.connect(5001);
+                    //      let rt = Runtime::new().unwrap();
+                    //      rt.block_on(socket2.connect(player_name_input.value().as_str())).unwrap();
                 }
             }
         }
@@ -197,27 +204,8 @@ pub trait ClientTrait {
     // fn disconnect(&mut self);
 }
 
-// impl ClientTrait for Client {
-//     fn new() -> Self {
-//         let rt = Runtime::new().unwrap();
-//         Client {
-//             is_connected: false,
-//             socket: rt.block_on(connect(5001)).unwrap(),
-//         }
-//     }
-//     fn connect(&mut self, client_port: u16) {
-//         let rt = Runtime::new().unwrap();
-//         let result = rt.block_on(connect(client_port));
-
-//         self.socket = result.unwrap();
-//         self.is_connected = true;
-//     }
-//     // fn disconnect(&mut self) {
-//     //     self.is_connected = false;
-//     // }
-// }
-
-async fn connect(client_port: u16, mut window: Arc<Mutex<Window>>) -> Result<Arc<UdpSocket>, Error> {
+async fn connect(
+    client_port: u16, window: Arc<Mutex<Window>>) -> Result<Arc<UdpSocket>, Error> {
     let local_address = format!("127.0.0.1:{}", client_port);
     let remote_address = "127.0.0.1:5000";
     let socket = UdpSocket::bind(local_address.parse::<SocketAddr>().unwrap())
@@ -242,8 +230,6 @@ async fn connect(client_port: u16, mut window: Arc<Mutex<Window>>) -> Result<Arc
             // create fltk draw function
             let mut locked_window = window.lock().await;
             
-            let mut square = Square { x: 50, y: 50, size: 50 };
-
             locked_window.draw(move |_| {
                 draw::set_draw_color(Color::Blue);
                 draw::draw_rect(rec_msg.pos_x, rec_msg.pos_y, rect_width, rect_height);
@@ -253,7 +239,7 @@ async fn connect(client_port: u16, mut window: Arc<Mutex<Window>>) -> Result<Arc
             println!("server confirmed message");
         }
     });
-    let udp_clone = udp_socket.clone();
+    // let udp_clone = udp_socket.clone();
     // heartbeat
     // tokio::spawn(async move {
     //     loop {
@@ -275,30 +261,3 @@ async fn connect(client_port: u16, mut window: Arc<Mutex<Window>>) -> Result<Arc
 
     return Ok(udp_socket);
 }
-
-
-// DRAWING
-#[repr(i32)]
-#[derive(Copy, Clone)]
-enum Direction {
-    Positive = 1,
-    Negative = -1,
-}
-
-struct Ball {
-    wid: valuator::FillDial,
-    pos: (i32, i32),             // x and y positions
-    dir: (Direction, Direction), // x and y directions
-}
-struct Square {
-    x: i32,
-    y: i32,
-    size: i32,
-}
-
-// impl d for Square {
-//     fn draw(&self) {
-//         drawing::set_draw_color(drawing::Color::from_rgb(255, 0, 0));
-//         drawing::draw_rect(self.x, self.y, self.size, self.size);
-//     }
-// }
