@@ -4,10 +4,12 @@ use fltk::{
     draw,
     enums::{Color, Event, FrameType},
     frame::Frame,
+    image::{Image, JpegImage, SharedImage, SvgImage},
     input::Input,
+    macros::image,
     prelude::*,
     prelude::{GroupExt, WidgetBase, WidgetExt},
-    window::Window, macros::image, image::{SvgImage, JpegImage, SharedImage, Image},
+    window::Window,
 };
 use moonlight_structs::{
     self,
@@ -15,18 +17,20 @@ use moonlight_structs::{
 };
 use rand::{prelude::*, Error};
 use std::{
+    fs,
     net::SocketAddr,
-    sync::{Arc, RwLock, RwLockReadGuard}, path::{Path, PathBuf}, fs,
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock, RwLockReadGuard},
 };
 use tokio::{io, net::UdpSocket, sync::Mutex};
 
 static CAPTURE_MOUSE_MOVE: bool = false;
 static CAPTURE_MOUSE_CLICK: bool = false;
-static CAPTURE_KEYUP: bool = true;
+static CAPTURE_KEYUP: bool = false;
+static CAPTURE_KEYDOWN: bool = false;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-
     // TODO: Create a function to manage assets
     let file_path = Path::new("udp-client/assets/map2.jpeg");
     let dest_folder = Path::new("target/debug/assets/");
@@ -83,8 +87,29 @@ fn main_render(
     // let mut connect_button = Button::new(330, 20, 80, 40, "Connect");
 
     window.handle(move |_widget, ev: Event| {
-        let mut temp_player = read_player.read().unwrap().clone();
+        let mut temp_player = Box::new(read_player.read().unwrap().clone());
+        
+        let key = app::event_key();
+        if key == fltk::enums::Key::Up || key == fltk::enums::Key::Down ||
+           key == fltk::enums::Key::Left || key == fltk::enums::Key::Right {
+            
+            if key == fltk::enums::Key::Up {
+                temp_player.pos_y -= 10;
+            } else if key == fltk::enums::Key::Down {
+                temp_player.pos_y += 10;
+            } else if key == fltk::enums::Key::Left {
+                temp_player.pos_x -= 10;
+            } else if key == fltk::enums::Key::Right {
+                temp_player.pos_x += 10;
+            } else {
+                return false;
+            }
 
+            send_move_message(temp_player, socket.clone());
+
+            return true;
+        }
+        
         match ev {
             Event::Move => {
                 if CAPTURE_MOUSE_MOVE {
@@ -95,22 +120,9 @@ fn main_render(
                     let player_message = Message {
                         message_id: 1,
                         message_type: 0,
-                        player: temp_player,
+                        player: *temp_player.clone(),
                     };
-
-                    // if client.is_connected
-                    // TODO: create function/trait to send message
-                    match socket.try_send(&player_message.serialize_moon()) {
-                        Ok(n) => {
-                            //println!("client {} sent {} bytes", client_id, n);
-                        }
-                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                            println!("ddd")
-                        }
-                        Err(e) => {
-                            println!("ddd")
-                        }
-                    }
+                    send_move_message(temp_player, socket.clone());
                 }
 
                 true
@@ -124,22 +136,10 @@ fn main_render(
                     let player_message = Message {
                         message_id: 1,
                         message_type: 0,
-                        player: temp_player,
+                        player: *temp_player.clone(),
                     };
 
-                    // if client.is_connected
-                    // TODO: create function/trait to send message
-                    match socket.try_send(&player_message.serialize_moon()) {
-                        Ok(n) => {
-                            //println!("client {} sent {} bytes", client_id, n);
-                        }
-                        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                            println!("ddd")
-                        }
-                        Err(e) => {
-                            println!("ddd")
-                        }
-                    }
+                    send_move_message(temp_player, socket.clone());
                 }
 
                 true
@@ -165,26 +165,41 @@ fn main_render(
                             let player_message = Message {
                                 message_id: 1,
                                 message_type: 2,
-                                player: temp_player,
+                                player: *temp_player.clone(),
                             };
 
-                            // if client.is_connected
-                            // TODO: create function/trait to send message
-                            match socket.try_send(&player_message.serialize_moon()) {
-                                Ok(n) => {
-                                    //println!("client {} sent {} bytes", client_id, n);
-                                }
-                                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                                    println!("ddd")
-                                }
-                                Err(e) => {
-                                    println!("ddd")
-                                }
+                            send_move_message(temp_player, socket.clone());
+                        }
+                        _ => println!("Key not found."),
+                    }
+                }
+                true
+            }
+            Event::KeyDown => {
+                if CAPTURE_KEYDOWN {
+                    match app::event_key().to_char() {
+                        Some(key) => {
+                            let event = app::event();
+                            println!("the following event happend {}", event);
+                            let shortcut = app::event_state();
+                            println!("state: {:?}", shortcut);
+                            let key_val = key as u8 as char;
+                            // let mut delta_x = 0;
+                            // let mut delta_y = 0;
+
+                            if key_val == 'w' || key_val == 'W' {
+                                temp_player.pos_y -= 10;
+                            } else if key_val == 's' || key_val == 'S' {
+                                temp_player.pos_y += 10;
+                            } else if key_val == 'a' || key_val == 'A' {
+                                temp_player.pos_x -= 10;
+                            } else if key_val == 'd' || key_val == 'D' {
+                                temp_player.pos_x += 10;
+                            } else {
+                                return false;
                             }
-                            // println!(
-                            //     "Key down event detected! Keycode: {}, Key value: {}",
-                            //     key, key_val
-                            // );
+
+                            send_move_message(temp_player, socket.clone());
                         }
                         _ => println!("Key not found."),
                     }
@@ -242,8 +257,7 @@ async fn connect(
     client_port: u16,
     window: Arc<Mutex<Window>>,
     player: Arc<RwLock<Player>>,
-) -> Result<Arc<UdpSocket>, Error> 
-{
+) -> Result<Arc<UdpSocket>, Error> {
     let local_address = format!("127.0.0.1:{}", client_port);
     let remote_address = "127.0.0.1:5000";
     let socket = UdpSocket::bind(local_address.parse::<SocketAddr>().unwrap())
@@ -262,7 +276,7 @@ async fn connect(
         let connected_message = Message {
             message_id: 1,
             message_type: 1,
-            player: ppp
+            player: ppp,
         };
         // TODO: spawn_player(window.clone(), player.clone()).await;
         match ccc.try_send(&connected_message.serialize_moon()) {
@@ -318,7 +332,8 @@ async fn render_player_position(
     pos_x: i32,
     pos_y: i32,
     window: Arc<Mutex<Window>>,
-    player: Arc<RwLock<Player>>) {
+    player: Arc<RwLock<Player>>,
+) {
     let rect_width = 25;
     let rect_height = 25;
 
@@ -331,7 +346,7 @@ async fn render_player_position(
     locked_window.draw(move |_| {
         draw::set_draw_color(Color::White);
         draw::draw_rectf(pos_x, pos_y, rect_width, rect_height);
-        println!("rendering player position: ({}, {})", pos_x, pos_y);
+        // println!("rendering player position: ({}, {})", pos_x, pos_y);
     });
     locked_window.redraw();
     drop(locked_window);
@@ -364,11 +379,34 @@ async fn read_player(obj: Arc<RwLock<Player>>) -> Player {
     return read_guard.clone();
 }
 
-async fn spawn_player(window: Arc<Mutex<Window>>, player: Arc<RwLock<Player>>)
-{
+async fn spawn_player(window: Arc<Mutex<Window>>, player: Arc<RwLock<Player>>) {
     let clone_player = player.clone();
     let read_guard = clone_player.read().unwrap();
     let pos_x = read_guard.pos_x;
     let pos_y = read_guard.pos_y;
     render_player_position(pos_x, pos_y, window, player).await;
+}
+
+pub fn send_move_message(temp_player: Box<Player>, socket: Arc<UdpSocket>)
+{
+    // TODO: create function/trait to create new message
+    let player_message = Message {
+        message_id: 1,
+        message_type: 2,
+        player: *temp_player,
+    };
+
+    // if client.is_connected
+    // TODO: create function/trait to send message
+    match socket.try_send(&player_message.serialize_moon()) {
+        Ok(n) => {
+            //println!("client {} sent {} bytes", client_id, n);
+        }
+        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+            println!("ddd")
+        }
+        Err(e) => {
+            println!("ddd")
+        }
+    }
 }
